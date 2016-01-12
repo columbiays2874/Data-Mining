@@ -1,0 +1,120 @@
+libname lib '/courses/de3a5b65ba27fe300';
+data senic;
+set lib.senic;
+run;
+
+data senic;
+set senic;
+if V8=1 then V8=0;
+if V8=2 then V8=1;
+if V9=1 then do;
+V9_1=1; V9_2=0; V9_3=0;
+end;
+if V9=2 then do;
+V9_1=0; V9_2=1; V9_3=0;
+end;
+if V9=3 then do;
+V9_1=0; V9_2=0; V9_3=1;
+end;
+if V9=4 then do;
+V9_1=-1; V9_2=-1; V9_3=-1;
+end;
+run;
+
+proc logistic data=senic descending;
+class V8 V9;
+model V8=V9 V10 V2 V4;
+output out=logout predicted=predicted;
+run;
+
+PROC SURVEYSELECT DATA=senic METHOD=URS RATE=1 REPS=113 
+OUT=bootdata;
+RUN;
+
+ODS OUTPUT parameterestimates=bparameterestimates; 
+PROC logistic DATA=bootdata;
+BY replicate;
+class V8 V9;
+MODEL V8 = V9 V10 V2 V4;
+RUN;
+
+PROC SORT DATA=bparameterestimates;
+BY variable replicate;
+RUN;
+PROC MEANS DATA=bparameterestimates MEAN STDDEV; 
+BY variable;
+VAR estimate; 
+RUN;
+
+PROC GLMSELECT DATA=senic;
+PARTITION FRACTION(TEST=0.00 VALIDATE=0.20);
+class V8 V9;
+MODEL V4 = V1 V2 V3 V5 V6 V7 V8 V9 V10 V11 V12 / SELECTION=LASSO(CHOOSE=VALIDATE); 
+OUTPUT OUT=lassoout PREDICTED=lassopred;
+RUN;
+
+PROC REG DATA=senic;
+MODEL V4 = V1 V2 V3 V5 V6 V7 V8 V9_1 V9_2 V9_3 V10 V11 V12 / SELECTION=CP; 
+OUTPUT OUT=cpout PREDICTED=cppred;
+RUN;
+
+PROC REG DATA=senic;
+MODEL V4 = V1 V2 V3 V5 V6 V7 V8 V9_1 V9_2 V9_3 V10 V11 V12 / SELECTION=FORWARD; 
+OUTPUT OUT=forwardout PREDICTED=forwardpred;
+RUN;
+
+PROC MEANS DATA=lassoout STDDEV; 
+VAR lassopred;
+RUN;
+
+PROC MEANS DATA=cpout STDDEV; 
+VAR cppred;
+RUN;
+
+PROC MEANS DATA=forwardout STDDEV; 
+VAR forwardpred;
+RUN;
+
+proc reg data=senic ridge=(0 to 0.6 by 0.05) outest=outest;
+MODEL V4 = V1 V2 V3 V5 V6 V7 V8 V9_1 V9_2 V9_3 V10 V11 V12;
+run;
+
+proc loess data=senic plots=residualsbysmooth(smooth);
+model V4=V5 / smooth=0.1 0.3 0.5 0.8;
+run;
+
+proc gam data=senic;
+model V4=spline(V5) spline(V7);
+run;
+
+PROC GAM DATA=senic;
+MODEL V4 = SPLINE(V5,DF=5) SPLINE(V7,DF=10); 
+RUN;
+
+PROC GAM DATA=senic;
+MODEL V4 = SPLINE(V5,DF=10) SPLINE(V7,DF=5); 
+RUN;
+
+proc gam data=senic;
+model V4=spline(V5) spline(V7) / method=gcv;
+output out=gam predicted=predicted;
+run;
+
+data gam;
+set gam;
+residual=V4-predictedV4;
+V5_V7=V5*V7;
+run;
+
+proc gplot data=gam;
+plot residual*V5_V7;
+run;
+quit;
+
+DATA tree;
+INFILE '/home/ys28740/HW/tree.sas7bdat';
+INPUT P_V4;
+RUN;
+
+proc print data=combined;
+run;
