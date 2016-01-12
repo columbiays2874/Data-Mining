@@ -1,0 +1,271 @@
+DATA data;
+INFILE '/home/ys28740/HW/hwdata.dat';
+INPUT x1 x2 x3 x4 y;
+RUN;
+
+PROC REG DATA=data;
+MODEL y = x1 x2 x3 x4; 
+OUTPUT OUT=regout PREDICTED=predicted; 
+RUN;
+
+proc univariate data=regout;
+histogram predicted;
+run;
+
+data logout;
+set logout;
+if predicted>=0.5 then oldloss=1-predicted;
+if predicted<0.5 then oldloss=predicted;
+run;
+
+proc logistic data=data descending;
+model y=x1 x2 x3 x4;
+output out=logout predicted=predicted;
+run;
+data logout;
+set logout;
+if predicted>=0.5 then p=1;
+if predicted<0.5 then p=0;
+run;
+PROC FREQ DATA=logout; 
+TABLE p; 
+RUN; 
+data logout;
+set logout;
+if p=y then mis=0;
+if p^=y then mis=1;
+run;
+proc univariate data=logout;
+var mis;
+run;
+
+proc univariate data=logout;
+var predicted;
+run;
+
+PROC REG DATA=data;
+MODEL y = x1 x2 x3 x4; 
+OUTPUT OUT=plotdata1 PREDICTED=rpredicted; 
+RUN;
+proc logistic data=data descending;
+model y=x1 x2 x3 x4;
+output out=plotdata2 predicted=lpredicted;
+run;
+data plotdata;
+set plotdata1;
+set plotdata2;
+run;
+proc gplot data=plotdata;
+plot rpredicted*lpredicted;
+run;
+
+PROC UNIVARIATE DATA=logout; 
+var oldloss;
+RUN;
+
+data logout;
+set logout;
+if predicted>=0.67 then newloss=2-2*predicted;
+if predicted<0.67 then newloss=predicted;
+run;
+
+proc univariate data=logout;
+var newloss;
+run;
+
+data logout;
+set logout;
+if predicted>=0.67 then oldloss_newrule=1-predicted;
+if predicted<0.67 then oldloss_newrule=predicted;
+if predicted>=0.5 then newloss_oldrule=2-2*predicted;
+if predicted<0.5 then newloss_oldrule=predicted;
+run;
+proc univariate data=logout;
+var oldloss_newrule newloss_oldrule;
+run;
+
+proc logistic data=data descending;
+model y=x1 x2 x3 x4 x1*x1 x1*x2 x1*x3 x1*x4 x2*x2 x2*x3 x2*x4 x3*x3 x3*x4 x4*x4;
+output out=logout10 predicted=predicted;
+run;
+
+data logout10;
+set logout10;
+if predicted>=0.5 then oldloss=1-predicted;
+if predicted<0.5 then oldloss=predicted;
+run;
+
+proc univariate data=logout10;
+var oldloss;
+run; 
+
+proc logistic data=data descending;
+model y=x1 x2 x3 x4 x1*x1 x1*x2 x1*x3 x1*x4 x2*x2 x2*x3 x2*x4 x3*x3 x3*x4 x4*x4 x1*x1*x1 x1*x1*x2 x1*x1*x3 x1*x1*x4 x1*x2*x2 x1*x2*x3 x1*x2*x4 x1*x3*x3 x1*x3*x4 x1*x4*x4 x2*x2*x2 x2*x2*x3 x2*x2*x4 x2*x3*x3 x2*x3*x4 x2*x4*x4 x3*x3*x3 x3*x3*x4 x3*x4*x4 x4*x4*x4;
+output out=logout11 predicted=predicted;
+run;
+
+data logout11;
+set logout11;
+if predicted>=0.5 then oldloss=1-predicted;
+if predicted<0.5 then oldloss=predicted;
+run;
+
+proc univariate data=logout11;
+var oldloss;
+run;
+
+
+%MACRO m(varlist); 
+ODS OUTPUT FITSTATISTICS=fitstatistics;  
+PROC LOGISTIC DATA=data DESCENDING;  
+MODEL y = &varlist; 
+RUN; 
+DATA fitstatistics;  
+LENGTH varlist $ 100;  
+SET fitstatistics;  
+WHERE Criterion="AIC";  
+varlist = "&varlist";  
+KEEP varlist InterceptAndCovariates;  
+RUN; 
+DATA LIST; 
+SET list fitstatistics; 
+RUN; 
+%MEND; 
+DATA list; 
+RUN; 
+%m(x1 x2 x3 x4); 
+%m(x1 x2 x3 x4 x1*x1 x2*x2 x3*x3 x4*x4);
+%m(x1 x2 x3 x4 x1*x1 x1*x2 x1*x3 x1*x4 x2*x2 x2*x3 x2*x4 x3*x3 x3*x4 x4*x4 x1*x1*x1 x1*x1*x2 x1*x1*x3 x1*x1*x4 x1*x2*x2 x1*x2*x3 x1*x2*x4 x1*x3*x3 x1*x3*x4 x1*x4*x4 x2*x2*x2 x2*x2*x3 x2*x2*x4 x2*x3*x3 x2*x3*x4 x2*x4*x4 x3*x3*x3 x3*x3*x4 x3*x4*x4 x4*x4*x4);
+PROC PRINT DATA=list;  
+WHERE NOT(MISSING(varlist)); 
+RUN; 
+
+%MACRO m(varlist); 
+ODS OUTPUT FITSTATISTICS=fitstatistics;  
+PROC LOGISTIC DATA=data DESCENDING;  
+MODEL y = &varlist; 
+RUN; 
+DATA fitstatistics;  
+LENGTH varlist $ 100;  
+SET fitstatistics;  
+WHERE Criterion="SC";  
+varlist = "&varlist";  
+KEEP varlist InterceptAndCovariates;  
+RUN; 
+DATA LIST; 
+SET list fitstatistics; 
+RUN; 
+%MEND; 
+DATA list; 
+RUN; 
+%m(x1 x2 x3 x4); 
+%m(x1 x2 x3 x4 x1*x1 x2*x2 x3*x3 x4*x4);
+%m(x1 x2 x3 x4 x1*x1 x1*x2 x1*x3 x1*x4 x2*x2 x2*x3 x2*x4 x3*x3 x3*x4 x4*x4 x1*x1*x1 x1*x1*x2 x1*x1*x3 x1*x1*x4 x1*x2*x2 x1*x2*x3 x1*x2*x4 x1*x3*x3 x1*x3*x4 x1*x4*x4 x2*x2*x2 x2*x2*x3 x2*x2*x4 x2*x3*x3 x2*x3*x4 x2*x4*x4 x3*x3*x3 x3*x3*x4 x3*x4*x4 x4*x4*x4);
+PROC PRINT DATA=list;  
+WHERE NOT(MISSING(varlist)); 
+RUN; 
+
+
+PROC LOGISTIC DATA=data DESCENDING;  
+MODEL y = x1*x1*x1 x1*x1*x2 x1*x1*x3 x1*x1*x4 x1*x2*x2 x1*x2*x3 x1*x2*x4 x1*x3*x3 x1*x3*x4 x1*x4*x4 x2*x2*x2 x2*x2*x3 x2*x2*x4 x2*x3*x3 x2*x3*x4 x2*x4*x4 x3*x3*x3 x3*x3*x4 x3*x4*x4 x4*x4*x4 /  
+SELECTION=FORWARD; 
+RUN; 
+
+PROC LOGISTIC DATA=data DESCENDING;  
+MODEL y = x1*x1*x1 x1*x1*x2 x1*x1*x3 x1*x1*x4 x1*x2*x2 x1*x2*x3 x1*x2*x4 x1*x3*x3 x1*x3*x4 x1*x4*x4 x2*x2*x2 x2*x2*x3 x2*x2*x4 x2*x3*x3 x2*x3*x4 x2*x4*x4 x3*x3*x3 x3*x3*x4 x3*x4*x4 x4*x4*x4 /  
+SELECTION=BACKWARD; 
+RUN; 
+
+
+PROC LOGISTIC DATA=data DESCENDING; 
+MODEL y = x1 x2 x3 x4 / CTABLE PPROB=0.3; 
+output out=logout15 predicted=predicted;
+RUN; 
+
+PROC DISCRIM DATA=data METHOD=NORMAL POOL=YES OUT=dout;  
+VAR x1 x2 x3 x4; 
+CLASS y; 
+priors '0'=0.5675 '1'=0.4325;
+RUN; 
+
+PROC FREQ DATA=dout; 
+TABLE _INTO_; 
+RUN; 
+
+data dout;
+set dout;
+if y=_INTO_ then misclassification=0;
+if y^=_INTO_ then misclassification=1;
+run;
+
+proc univariate data=dout;
+var misclassification;
+run;
+
+
+
+PROC DISCRIM DATA=data METHOD=NORMAL POOL=YES OUT=dout17;  
+VAR x1 x2 x3 x4; 
+CLASS y; 
+PRIORS '1' = 0.7 '0' = 0.3; 
+RUN; 
+
+PROC FREQ DATA=dout17; 
+TABLE _INTO_; 
+RUN; 
+
+data dout17;
+set dout17;
+if y=_INTO_ then misclassification=0;
+if y^=_INTO_ then misclassification=1;
+run;
+
+proc univariate data=dout17;
+var misclassification;
+run;
+
+data data;
+set data;
+x1_2=x1*x1;
+x2_2=x2*x2;
+x3_2=x3*x3;
+x4_2=x4*x4;
+run;
+
+PROC DISCRIM DATA=data METHOD=NORMAL POOL=NO OUT=dout2;  
+VAR x1 x2 x3 x4 x1_2 x2_2 x3_2 x4_2; 
+CLASS y; 
+priors '0'=0.5675 '1'=0.4325;
+RUN; 
+proc freq data=dout2;
+table _INTO_;
+run;
+data dout2;
+set dout2;
+if _INTO_=y then mis=0;
+if _INTO_^=y then mis=1;
+run;
+proc univariate data=dout2;
+var mis;
+run;
+
+proc logistic data=data descending;
+model y=x1*x1 x1*x2 x1*x3 x1*x4 x2*x2 x2*x3 x2*x4 x3*x3 x3*x4 x4*x4;
+output out=logout19 predicted=predicted;
+run;
+data logout19;
+set logout19;
+if predicted>=0.5 then p=1;
+if predicted<0.5 then p=0;
+run;
+PROC FREQ DATA=logout19; 
+TABLE p; 
+RUN; 
+data logout19;
+set logout19;
+if p=y then mis=0;
+if p^=y then mis=1;
+run;
+proc univariate data=logout19;
+var mis;
+run;
