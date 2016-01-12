@@ -1,0 +1,45 @@
+LIBNAME classlib '/courses/de3a5b65ba27fe300';
+DATA data;
+SET classlib.data1; 
+RUN;
+
+/*problem2(a)*/
+PROC REG DATA=data PLOTS=NONE; 
+MODEL height = age;
+OUTPUT OUT=regout PREDICTED=pred; 
+RUN;
+
+%MACRO m(list);
+PROC GLM DATA=data PLOTS=NONE;
+CLASS gender;
+MODEL height=&list/SOLUTION;
+OUTPUT OUT=regout PREDICTED=pred;
+RUN;
+%MEND;
+%m(age gender);  /*problem2(b)*/
+%m(age gender age*gender); /*problem2(c)*/
+%m(age gender age*gender age*age); /*problem2(d)*/
+%m(age age*age gender age*gender age*age*gender); /*problem2(e)*/
+
+DATA data; /*Mallow's CP*/
+SET data;
+age2=age*age;
+age3=age2*age;
+RUN;
+PROC TRANSREG DATA=data;
+MODEL IDENTITY(height)= IDENTITY(age)
+                    CLASS(gender)
+                    IDENTITY(age2)
+                    IDENTITY(age2)*CLASS(gender)
+                    IDENTITY(age3)
+                    IDENTITY(age3)*CLASS(gender);
+OUTPUT OUT=trout DESIGN;
+RUN;
+ODS OUTPUT SUBSETSELSUMMARY=cpstats;
+PROC REG DATA=trout PLOTS=NONE;
+MODEL height = &_trgind / SELECTION=CP;
+RUN;
+PROC PRINT DATA=cpstats NOOBS;
+VAR NUMINMODEL CP VARSINMODEL;
+RUN;
+QUIT;
