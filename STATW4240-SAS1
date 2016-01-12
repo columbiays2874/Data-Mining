@@ -1,0 +1,22 @@
+LIBNAME datalib "/courses/de3a5b65ba27fe300";
+data data1;
+set datalib.data1; 
+
+proc gplot data=data1;
+where(gender='M');
+plot weight*height;
+title 'Plot of Weight-by-Height For Men';
+run;
+
+proc gplot  data=data1;
+where(gender='F');
+plot weight*height;
+title 'Plot of Weight-by-Height For Women';
+run;
+
+SYMBOL1 VALUE=dot COLOR=lightblue INTERPOL= none ;
+SYMBOL2 VALUE=diamond COLOR=greenyellow INTERPOL=none;
+proc gplot data=data1;
+plot weight*height=gender;
+title 'Plot of Weight-by-Height For Both Men and Women';
+run;
